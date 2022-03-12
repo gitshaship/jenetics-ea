@@ -12,7 +12,12 @@ import io.jenetics.util.Seq;
 
 
 public class GAproblem {
-    // 2.) Definition of the fitness function.
+
+    //GenoType
+    private static Factory<Genotype<DoubleGene>> gtf =
+            Genotype.of(DoubleChromosome.of(0, 10, 10));
+
+    //fitness function for performance
     private static double eval(Genotype<DoubleGene> gt) {
         double[] dt =  gt.chromosome()
                 .as(DoubleChromosome.class)
@@ -35,48 +40,87 @@ public class GAproblem {
     }
 
     private static Crossover getCrossOverFunction(String type, double args){
-        return switch (type) {
-            case "SimulatedBinary" -> new SimulatedBinaryCrossover(args);
-            case "SinglePoint" -> new SinglePointCrossover(args);
-            case "DoublePoint" -> new MultiPointCrossover(args);
-            default -> new Crossover(args) {
-                @Override
-                protected int crossover(MSeq mSeq, MSeq mSeq1) {
-                    return 0;
-                }
-            };
-        };
+        Crossover function;
+        switch(type){
+            case Constants.SIMULATED_BINARY:
+                function =  new SimulatedBinaryCrossover(args);
+                break;
+            case Constants.SINGLE_POINT:
+                function =  new SinglePointCrossover(args);
+                break;
+            case Constants.MULTI_POINT:
+                function =  new MultiPointCrossover(args);
+                break;
+            case Constants.PMX:
+                function =  new PartiallyMatchedCrossover(args);
+                break;
+            case Constants.LINE:
+                function =  new LineCrossover(args);
+                break;
+            default:
+                function = new Crossover(args) {
+                    @Override
+                    protected int crossover(MSeq mSeq, MSeq mSeq1) {
+                        return 0;
+                    }
+                };
+        }
+        return function;
     }
 
-    private static Mutator getMutationFunction(String type, double args){
-        return switch (type) {
-            case "Gaussian" -> new GaussianMutator(args);
-            default -> new Mutator(args);
-        };
+    private static Mutator<DoubleGene, Double> getMutationFunction(String type, double args){
+        Mutator function;
+        switch(type){
+            case Constants.GAUSSIAN_MUTATOR:
+                function =  new GaussianMutator(args);
+                break;
+            case Constants.SWAP_MUTATOR:
+                function =  new SwapMutator(args);
+                break;
+            default:
+                function = new Mutator(args);
+        }
+        return function;
     }
 
-    private static Selector getSelectionFunction(String type, int args){
-        return switch (type) {
-            case "Tournament" -> new TournamentSelector(args);
-            case "RouletteWheel" -> new RouletteWheelSelector();
-            default -> (seq, i, optimize) -> null;
-        };
+    private static Selector<DoubleGene, Double> getSelectionFunction(String type, int args){
+        Selector function;
+        switch(type){
+            case Constants.TOURNAMENT_SELECTOR:
+                return  new TournamentSelector(args);
+            case Constants.ROULETTEWHEEL_SELECTOR:
+                function =  new RouletteWheelSelector();
+                break;
+            case Constants.TRUNCATION_SELECTOR:
+                function =  new TruncationSelector();
+                break;
+            case Constants.MONTECARLO_SELECTOR:
+                function =  new MonteCarloSelector();
+                break;
+            default:
+                function = new Selector() {
+                    @Override
+                    public ISeq<Phenotype> select(Seq seq, int i, Optimize optimize) {
+                        return null;
+                    }
+                };
+        }
+        return function;
+
     }
+
 
     public static void main(String[] args) {
 
-        Factory<Genotype<DoubleGene>> gtf =
-                Genotype.of(DoubleChromosome.of(0, 10, 10));
-
-
-        final Engine<DoubleGene, Double> engine = Engine
+        Engine<DoubleGene, Double> engine = Engine
                 .builder(GAproblem::eval, gtf)
                 .populationSize(500)
                 .alterers(
-                        getCrossOverFunction("SinglePoint", 1),
-                        getMutationFunction("Default",1.0/5)
+                        getCrossOverFunction(Constants.LINE, 1),
+                        getMutationFunction(Constants.SWAP_MUTATOR,1.0/5)
                 )
-                .offspringSelector(getSelectionFunction("Tournament", 5))
+                .offspringSelector(getSelectionFunction(Constants.TOURNAMENT_SELECTOR, 5))
+                .survivorsSelector(getSelectionFunction(Constants.ROULETTEWHEEL_SELECTOR, 1))
                 .maximizing()
                 .build();
 
