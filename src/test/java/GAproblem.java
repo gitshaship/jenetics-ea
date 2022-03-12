@@ -137,7 +137,7 @@ public class GAproblem {
                 statistics = EvolutionStatistics.ofNumber();
 
         final Phenotype<DoubleGene, Double> best  = engine.stream()
-                .limit(bySteadyFitness(7))
+                //.limit(bySteadyFitness(7))
                 .limit(100)
                 .peek(statistics)
                 .collect(toBestPhenotype());
@@ -149,17 +149,17 @@ public class GAproblem {
                 "Genotype of best item: %s%n",
                 best.genotype());
 
-        final EvolutionResult<DoubleGene, Double> results = engine
+        final ISeq<EvolutionResult<DoubleGene, Double>> results = engine
                 .stream()
+                //.limit(bySteadyFitness(7))
                 .limit(100)
-                .flatMap(MinMax.toStrictlyIncreasing())
-                .collect(toBestEvolutionResult());
-                //collect(ISeq.toISeq(10));
+                //.flatMap(MinMax.toStrictlyIncreasing())
+                .collect(ISeq.toISeq());
 
-        Iterator<Genotype<DoubleGene>> iterator = results.genotypes().iterator();
+        Iterator<EvolutionResult<DoubleGene, Double>> iterator = results.iterator();
         int interation = 0;
         while(iterator.hasNext()){
-            Genotype value = iterator.next();
+            Phenotype value = iterator.next().bestPhenotype();
             System.out.println("Best genotype so far - interaction" + (++interation));
             System.out.println(value);
         }
