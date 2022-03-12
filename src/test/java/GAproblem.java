@@ -15,7 +15,7 @@ public class GAproblem {
 
     //GenoType
     private static Factory<Genotype<DoubleGene>> gtf =
-            Genotype.of(DoubleChromosome.of(0, 10, 10));
+            Genotype.of(DoubleChromosome.of(0, 10, 6));
 
     //fitness function for performance
     private static double eval(Genotype<DoubleGene> gt) {
@@ -23,14 +23,14 @@ public class GAproblem {
                 .as(DoubleChromosome.class)
                 .toArray();
 
-        // index 0 - Wight / 1000
-        // index 1 - Fuel Consumption
-        // index 2 - Engine capacity
+        // index 0 - Weight / 1000
+        // index 1 - Fuel Consumption/10
+        // index 2 - Engine capacity/1000
         // index 3 - Passenger capacity
-        // index 4 - Engine power
+        // index 4 - Engine power/100
         // index 5 - Battery capacity
 
-        double ratio1 = (dt[0] * 1000) / dt[1];
+        double ratio1 = dt[0] / dt[1];
         double ratio2 = dt[2] / dt[1];
         double ratio3 = dt[3] / dt[1];
         double ratio4 = dt[4] / dt[1];
@@ -119,6 +119,7 @@ public class GAproblem {
                         getCrossOverFunction(Constants.LINE, 1),
                         getMutationFunction(Constants.SWAP_MUTATOR,1.0/5)
                 )
+                .offspringFraction(0.7)
                 .offspringSelector(getSelectionFunction(Constants.TOURNAMENT_SELECTOR, 5))
                 .survivorsSelector(getSelectionFunction(Constants.ROULETTEWHEEL_SELECTOR, 1))
                 .maximizing()
