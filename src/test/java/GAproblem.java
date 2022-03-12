@@ -124,8 +124,9 @@ public class GAproblem {
                 .builder(GAproblem::eval, gtf)
                 .populationSize(500)
                 .alterers(
-                        getCrossOverFunction(Constants.LINE, 1),
+                        getCrossOverFunction(Constants.SINGLE_POINT, 1),
                         getMutationFunction(Constants.SWAP_MUTATOR,1.0/5)
+
                 )
                 .offspringFraction(0.7)
                 .offspringSelector(getSelectionFunction(Constants.TOURNAMENT_SELECTOR, 5))
@@ -136,31 +137,35 @@ public class GAproblem {
         final EvolutionStatistics<Double, ?>
                 statistics = EvolutionStatistics.ofNumber();
 
-        final Phenotype<DoubleGene, Double> best  = engine.stream()
-                //.limit(bySteadyFitness(7))
-                .limit(100)
-                .peek(statistics)
-                .collect(toBestPhenotype());
-
-        System.out.println(statistics);
-        System.out.println(best);
-        System.out.println("\n\n");
-        System.out.printf(
-                "Genotype of best item: %s%n",
-                best.genotype());
+//        final Phenotype<DoubleGene, Double> best  = engine.stream()
+//                //.limit(bySteadyFitness(7))
+//                .limit(100)
+//                .peek(statistics)
+//                .collect(toBestPhenotype());
+//
+//        System.out.println(statistics);
+//        System.out.println(best);
+//        System.out.println("\n\n");
+//        System.out.printf(
+//                "Genotype of best item: %s%n",
+//                best.genotype());
 
         final ISeq<EvolutionResult<DoubleGene, Double>> results = engine
                 .stream()
-                //.limit(bySteadyFitness(7))
+                .limit(bySteadyFitness(7))
                 .limit(100)
-                //.flatMap(MinMax.toStrictlyIncreasing())
+                .peek(statistics)
+                .flatMap(MinMax.toStrictlyIncreasing())
                 .collect(ISeq.toISeq());
+
+        System.out.println(statistics);
+        System.out.println("\n\n");
 
         Iterator<EvolutionResult<DoubleGene, Double>> iterator = results.iterator();
         int interation = 0;
         while(iterator.hasNext()){
             Phenotype value = iterator.next().bestPhenotype();
-            System.out.println("Best genotype so far - interaction" + (++interation));
+            System.out.println("Best Phenotype so far - interaction" + (++interation));
             System.out.println(value);
         }
     }
