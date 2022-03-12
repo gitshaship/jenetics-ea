@@ -23,7 +23,7 @@ public class GAproblem {
 
     //GenoType
     private static Factory<Genotype<DoubleGene>> gtf =
-            Genotype.of(DoubleChromosome.of(0, 10, 6));
+            Genotype.of(DoubleChromosome.of(0.1, 10, 6));
 
     //fitness function for performance
     private static double eval(Genotype<DoubleGene> gt) {
@@ -136,19 +136,6 @@ public class GAproblem {
 
         final EvolutionStatistics<Double, ?>
                 statistics = EvolutionStatistics.ofNumber();
-
-//        final Phenotype<DoubleGene, Double> best  = engine.stream()
-//                //.limit(bySteadyFitness(7))
-//                .limit(100)
-//                .peek(statistics)
-//                .collect(toBestPhenotype());
-//
-//        System.out.println(statistics);
-//        System.out.println(best);
-//        System.out.println("\n\n");
-//        System.out.printf(
-//                "Genotype of best item: %s%n",
-//                best.genotype());
 
         final ISeq<EvolutionResult<DoubleGene, Double>> results = engine
                 .stream()
