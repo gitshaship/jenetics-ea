@@ -1,0 +1,684 @@
+Index: src/main/java/GAproblem.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/GAproblem.java b/src/main/java/GAproblem2.java
+rename from src/main/java/GAproblem.java
+rename to src/main/java/GAproblem2.java
+--- a/src/main/java/GAproblem.java	(revision 930f8e5ed3e482521c71035f4e764f2d482e9761)
++++ b/src/main/java/GAproblem2.java	(date 1647080469397)
+@@ -11,7 +11,7 @@
+ import io.jenetics.util.Seq;
+ 
+ 
+-public class GAproblem {
++public class GAproblem2 {
+     // 2.) Definition of the fitness function.
+     private static double eval(Genotype<DoubleGene> gt) {
+         double[] dt =  gt.chromosome()
+@@ -89,7 +89,7 @@
+ 
+ 
+         final Engine<DoubleGene, Double> engine = Engine
+-                .builder(GAproblem::eval, gtf)
++                .builder(GAproblem2::eval, gtf)
+                 .populationSize(500)
+                 .alterers(
+                         getCrossOverFunction("SinglePoint", 1),
+Index: src/test/java/GAproblem.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>import static io.jenetics.engine.EvolutionResult.toBestEvolutionResult;\nimport static io.jenetics.engine.EvolutionResult.toBestPhenotype;\nimport static io.jenetics.engine.Limits.bySteadyFitness;\n\nimport io.jenetics.*;\nimport io.jenetics.engine.Engine;\nimport io.jenetics.engine.Evolution;\nimport io.jenetics.engine.EvolutionResult;\nimport io.jenetics.engine.EvolutionStatistics;\nimport io.jenetics.ext.SimulatedBinaryCrossover;\nimport io.jenetics.ext.moea.Vec;\nimport io.jenetics.stat.MinMax;\nimport io.jenetics.util.Factory;\nimport io.jenetics.util.ISeq;\nimport io.jenetics.util.MSeq;\nimport io.jenetics.util.Seq;\n\nimport java.util.Iterator;\nimport java.util.stream.Collectors;\n\n\npublic class GAproblem {\n\n    //GenoType\n    private static Factory<Genotype<DoubleGene>> gtf =\n            Genotype.of(DoubleChromosome.of(0, 10, 6));\n\n    //fitness function for performance\n    private static double eval(Genotype<DoubleGene> gt) {\n        double[] dt =  gt.chromosome()\n                .as(DoubleChromosome.class)\n                .toArray();\n\n        // index 0 - Weight / 1000\n        // index 1 - Fuel Consumption/10\n        // index 2 - Engine capacity/1000\n        // index 3 - Passenger capacity\n        // index 4 - Engine power/100\n        // index 5 - Battery capacity\n\n        double ratio1 = dt[0] / dt[1];\n        double ratio2 = dt[2] / dt[1];\n        double ratio3 = dt[3] / dt[1];\n        double ratio4 = dt[4] / dt[1];\n        double ratio5 = 1 / (dt[5] * dt[1]);\n\n        return ratio1 + ratio2 + (0.65 * ratio3) + (0.35 * ratio4) + ratio5;\n    }\n\n    private static Crossover getCrossOverFunction(String type, double args){\n        Crossover function;\n        switch(type){\n            case Constants.SIMULATED_BINARY:\n                function =  new SimulatedBinaryCrossover(args);\n                break;\n            case Constants.SINGLE_POINT:\n                function =  new SinglePointCrossover(args);\n                break;\n            case Constants.MULTI_POINT:\n                function =  new MultiPointCrossover(args);\n                break;\n            case Constants.PMX:\n                function =  new PartiallyMatchedCrossover(args);\n                break;\n            case Constants.LINE:\n                function =  new LineCrossover(args);\n                break;\n            default:\n                function = new Crossover(args) {\n                    @Override\n                    protected int crossover(MSeq mSeq, MSeq mSeq1) {\n                        return 0;\n                    }\n                };\n        }\n        return function;\n    }\n\n    private static Mutator<DoubleGene, Double> getMutationFunction(String type, double args){\n        Mutator function;\n        switch(type){\n            case Constants.GAUSSIAN_MUTATOR:\n                function =  new GaussianMutator(args);\n                break;\n            case Constants.SWAP_MUTATOR:\n                function =  new SwapMutator(args);\n                break;\n            default:\n                function = new Mutator(args);\n        }\n        return function;\n    }\n\n    private static Selector<DoubleGene, Double> getSelectionFunction(String type, int args){\n        Selector function;\n        switch(type){\n            case Constants.TOURNAMENT_SELECTOR:\n                return  new TournamentSelector(args);\n            case Constants.ROULETTEWHEEL_SELECTOR:\n                function =  new RouletteWheelSelector();\n                break;\n            case Constants.TRUNCATION_SELECTOR:\n                function =  new TruncationSelector();\n                break;\n            case Constants.MONTECARLO_SELECTOR:\n                function =  new MonteCarloSelector();\n                break;\n            default:\n                function = new Selector() {\n                    @Override\n                    public ISeq<Phenotype> select(Seq seq, int i, Optimize optimize) {\n                        return null;\n                    }\n                };\n        }\n        return function;\n\n    }\n\n\n    public static void main(String[] args) {\n\n        Engine<DoubleGene, Double> engine = Engine\n                .builder(GAproblem::eval, gtf)\n                .populationSize(500)\n                .alterers(\n                        getCrossOverFunction(Constants.LINE, 1),\n                        getMutationFunction(Constants.SWAP_MUTATOR,1.0/5)\n                )\n                .offspringFraction(0.7)\n                .offspringSelector(getSelectionFunction(Constants.TOURNAMENT_SELECTOR, 5))\n                .survivorsSelector(getSelectionFunction(Constants.ROULETTEWHEEL_SELECTOR, 1))\n                .maximizing()\n                .build();\n\n        final EvolutionStatistics<Double, ?>\n                statistics = EvolutionStatistics.ofNumber();\n\n        final Phenotype<DoubleGene, Double> best  = engine.stream()\n                .limit(bySteadyFitness(7))\n                .limit(100)\n                .peek(statistics)\n                .collect(toBestPhenotype());\n\n        System.out.println(statistics);\n        System.out.println(best);\n        System.out.println(\"\\n\\n\");\n        System.out.printf(\n                \"Genotype of best item: %s%n\",\n                best.genotype());\n\n        final EvolutionResult<DoubleGene, Double> results = engine\n                .stream()\n                .limit(100)\n                .flatMap(MinMax.toStrictlyIncreasing())\n                .collect(toBestEvolutionResult());\n                //collect(ISeq.toISeq(10));\n\n        Iterator<Genotype<DoubleGene>> iterator = results.genotypes().iterator();\n        int interation = 0;\n        while(iterator.hasNext()){\n            Genotype value = iterator.next();\n            System.out.println(\"Best genotype so far - interaction\" + (++interation));\n            System.out.println(value);\n        }\n    }\n}
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/test/java/GAproblem.java b/src/test/java/GAproblem.java
+--- a/src/test/java/GAproblem.java	(revision 930f8e5ed3e482521c71035f4e764f2d482e9761)
++++ b/src/test/java/GAproblem.java	(date 1647080534556)
+@@ -4,11 +4,9 @@
+ 
+ import io.jenetics.*;
+ import io.jenetics.engine.Engine;
+-import io.jenetics.engine.Evolution;
+ import io.jenetics.engine.EvolutionResult;
+ import io.jenetics.engine.EvolutionStatistics;
+ import io.jenetics.ext.SimulatedBinaryCrossover;
+-import io.jenetics.ext.moea.Vec;
+ import io.jenetics.stat.MinMax;
+ import io.jenetics.util.Factory;
+ import io.jenetics.util.ISeq;
+@@ -16,7 +14,6 @@
+ import io.jenetics.util.Seq;
+ 
+ import java.util.Iterator;
+-import java.util.stream.Collectors;
+ 
+ 
+ public class GAproblem {
+Index: .idea/encodings.xml
+===================================================================
+diff --git a/.idea/encodings.xml b/.idea/encodings.xml
+deleted file mode 100644
+--- a/.idea/encodings.xml	(revision 930f8e5ed3e482521c71035f4e764f2d482e9761)
++++ /dev/null	(revision 930f8e5ed3e482521c71035f4e764f2d482e9761)
+@@ -1,4 +0,0 @@
+-<?xml version="1.0" encoding="UTF-8"?>
+-<project version="4">
+-  <component name="Encoding" addBOMForNewFiles="with NO BOM" />
+-</project>
+\ No newline at end of file
+Index: .idea/uiDesigner.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/.idea/uiDesigner.xml b/.idea/uiDesigner.xml
+new file mode 100644
+--- /dev/null	(date 1647080514445)
++++ b/.idea/uiDesigner.xml	(date 1647080514445)
+@@ -0,0 +1,124 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<project version="4">
++  <component name="Palette2">
++    <group name="Swing">
++      <item class="com.intellij.uiDesigner.HSpacer" tooltip-text="Horizontal Spacer" icon="/com/intellij/uiDesigner/icons/hspacer.png" removable="false" auto-create-binding="false" can-attach-label="false">
++        <default-constraints vsize-policy="1" hsize-policy="6" anchor="0" fill="1" />
++      </item>
++      <item class="com.intellij.uiDesigner.VSpacer" tooltip-text="Vertical Spacer" icon="/com/intellij/uiDesigner/icons/vspacer.png" removable="false" auto-create-binding="false" can-attach-label="false">
++        <default-constraints vsize-policy="6" hsize-policy="1" anchor="0" fill="2" />
++      </item>
++      <item class="javax.swing.JPanel" icon="/com/intellij/uiDesigner/icons/panel.png" removable="false" auto-create-binding="false" can-attach-label="false">
++        <default-constraints vsize-policy="3" hsize-policy="3" anchor="0" fill="3" />
++      </item>
++      <item class="javax.swing.JScrollPane" icon="/com/intellij/uiDesigner/icons/scrollPane.png" removable="false" auto-create-binding="false" can-attach-label="true">
++        <default-constraints vsize-policy="7" hsize-policy="7" anchor="0" fill="3" />
++      </item>
++      <item class="javax.swing.JButton" icon="/com/intellij/uiDesigner/icons/button.png" removable="false" auto-create-binding="true" can-attach-label="false">
++        <default-constraints vsize-policy="0" hsize-policy="3" anchor="0" fill="1" />
++        <initial-values>
++          <property name="text" value="Button" />
++        </initial-values>
++      </item>
++      <item class="javax.swing.JRadioButton" icon="/com/intellij/uiDesigner/icons/radioButton.png" removable="false" auto-create-binding="true" can-attach-label="false">
++        <default-constraints vsize-policy="0" hsize-policy="3" anchor="8" fill="0" />
++        <initial-values>
++          <property name="text" value="RadioButton" />
++        </initial-values>
++      </item>
++      <item class="javax.swing.JCheckBox" icon="/com/intellij/uiDesigner/icons/checkBox.png" removable="false" auto-create-binding="true" can-attach-label="false">
++        <default-constraints vsize-policy="0" hsize-policy="3" anchor="8" fill="0" />
++        <initial-values>
++          <property name="text" value="CheckBox" />
++        </initial-values>
++      </item>
++      <item class="javax.swing.JLabel" icon="/com/intellij/uiDesigner/icons/label.png" removable="false" auto-create-binding="false" can-attach-label="false">
++        <default-constraints vsize-policy="0" hsize-policy="0" anchor="8" fill="0" />
++        <initial-values>
++          <property name="text" value="Label" />
++        </initial-values>
++      </item>
++      <item class="javax.swing.JTextField" icon="/com/intellij/uiDesigner/icons/textField.png" removable="false" auto-create-binding="true" can-attach-label="true">
++        <default-constraints vsize-policy="0" hsize-policy="6" anchor="8" fill="1">
++          <preferred-size width="150" height="-1" />
++        </default-constraints>
++      </item>
++      <item class="javax.swing.JPasswordField" icon="/com/intellij/uiDesigner/icons/passwordField.png" removable="false" auto-create-binding="true" can-attach-label="true">
++        <default-constraints vsize-policy="0" hsize-policy="6" anchor="8" fill="1">
++          <preferred-size width="150" height="-1" />
++        </default-constraints>
++      </item>
++      <item class="javax.swing.JFormattedTextField" icon="/com/intellij/uiDesigner/icons/formattedTextField.png" removable="false" auto-create-binding="true" can-attach-label="true">
++        <default-constraints vsize-policy="0" hsize-policy="6" anchor="8" fill="1">
++          <preferred-size width="150" height="-1" />
++        </default-constraints>
++      </item>
++      <item class="javax.swing.JTextArea" icon="/com/intellij/uiDesigner/icons/textArea.png" removable="false" auto-create-binding="true" can-attach-label="true">
++        <default-constraints vsize-policy="6" hsize-policy="6" anchor="0" fill="3">
++          <preferred-size width="150" height="50" />
++        </default-constraints>
++      </item>
++      <item class="javax.swing.JTextPane" icon="/com/intellij/uiDesigner/icons/textPane.png" removable="false" auto-create-binding="true" can-attach-label="true">
++        <default-constraints vsize-policy="6" hsize-policy="6" anchor="0" fill="3">
++          <preferred-size width="150" height="50" />
++        </default-constraints>
++      </item>
++      <item class="javax.swing.JEditorPane" icon="/com/intellij/uiDesigner/icons/editorPane.png" removable="false" auto-create-binding="true" can-attach-label="true">
++        <default-constraints vsize-policy="6" hsize-policy="6" anchor="0" fill="3">
++          <preferred-size width="150" height="50" />
++        </default-constraints>
++      </item>
++      <item class="javax.swing.JComboBox" icon="/com/intellij/uiDesigner/icons/comboBox.png" removable="false" auto-create-binding="true" can-attach-label="true">
++        <default-constraints vsize-policy="0" hsize-policy="2" anchor="8" fill="1" />
++      </item>
++      <item class="javax.swing.JTable" icon="/com/intellij/uiDesigner/icons/table.png" removable="false" auto-create-binding="true" can-attach-label="false">
++        <default-constraints vsize-policy="6" hsize-policy="6" anchor="0" fill="3">
++          <preferred-size width="150" height="50" />
++        </default-constraints>
++      </item>
++      <item class="javax.swing.JList" icon="/com/intellij/uiDesigner/icons/list.png" removable="false" auto-create-binding="true" can-attach-label="false">
++        <default-constraints vsize-policy="6" hsize-policy="2" anchor="0" fill="3">
++          <preferred-size width="150" height="50" />
++        </default-constraints>
++      </item>
++      <item class="javax.swing.JTree" icon="/com/intellij/uiDesigner/icons/tree.png" removable="false" auto-create-binding="true" can-attach-label="false">
++        <default-constraints vsize-policy="6" hsize-policy="6" anchor="0" fill="3">
++          <preferred-size width="150" height="50" />
++        </default-constraints>
++      </item>
++      <item class="javax.swing.JTabbedPane" icon="/com/intellij/uiDesigner/icons/tabbedPane.png" removable="false" auto-create-binding="true" can-attach-label="false">
++        <default-constraints vsize-policy="3" hsize-policy="3" anchor="0" fill="3">
++          <preferred-size width="200" height="200" />
++        </default-constraints>
++      </item>
++      <item class="javax.swing.JSplitPane" icon="/com/intellij/uiDesigner/icons/splitPane.png" removable="false" auto-create-binding="false" can-attach-label="false">
++        <default-constraints vsize-policy="3" hsize-policy="3" anchor="0" fill="3">
++          <preferred-size width="200" height="200" />
++        </default-constraints>
++      </item>
++      <item class="javax.swing.JSpinner" icon="/com/intellij/uiDesigner/icons/spinner.png" removable="false" auto-create-binding="true" can-attach-label="true">
++        <default-constraints vsize-policy="0" hsize-policy="6" anchor="8" fill="1" />
++      </item>
++      <item class="javax.swing.JSlider" icon="/com/intellij/uiDesigner/icons/slider.png" removable="false" auto-create-binding="true" can-attach-label="false">
++        <default-constraints vsize-policy="0" hsize-policy="6" anchor="8" fill="1" />
++      </item>
++      <item class="javax.swing.JSeparator" icon="/com/intellij/uiDesigner/icons/separator.png" removable="false" auto-create-binding="false" can-attach-label="false">
++        <default-constraints vsize-policy="6" hsize-policy="6" anchor="0" fill="3" />
++      </item>
++      <item class="javax.swing.JProgressBar" icon="/com/intellij/uiDesigner/icons/progressbar.png" removable="false" auto-create-binding="true" can-attach-label="false">
++        <default-constraints vsize-policy="0" hsize-policy="6" anchor="0" fill="1" />
++      </item>
++      <item class="javax.swing.JToolBar" icon="/com/intellij/uiDesigner/icons/toolbar.png" removable="false" auto-create-binding="false" can-attach-label="false">
++        <default-constraints vsize-policy="0" hsize-policy="6" anchor="0" fill="1">
++          <preferred-size width="-1" height="20" />
++        </default-constraints>
++      </item>
++      <item class="javax.swing.JToolBar$Separator" icon="/com/intellij/uiDesigner/icons/toolbarSeparator.png" removable="false" auto-create-binding="false" can-attach-label="false">
++        <default-constraints vsize-policy="0" hsize-policy="0" anchor="0" fill="1" />
++      </item>
++      <item class="javax.swing.JScrollBar" icon="/com/intellij/uiDesigner/icons/scrollbar.png" removable="false" auto-create-binding="true" can-attach-label="false">
++        <default-constraints vsize-policy="6" hsize-policy="0" anchor="0" fill="2" />
++      </item>
++    </group>
++  </component>
++</project>
+\ No newline at end of file
+Index: .idea/workspace.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+><?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<project version=\"4\">\n  <component name=\"ChangeListManager\">\n    <list default=\"true\" id=\"4c19c3e6-a2df-4245-87a4-ff2b509e88d1\" name=\"Default Changelist\" comment=\"\" />\n    <ignored path=\"$PROJECT_DIR$/out/\" />\n    <ignored path=\"$PROJECT_DIR$/target/\" />\n    <option name=\"EXCLUDED_CONVERTED_TO_IGNORED\" value=\"true\" />\n    <option name=\"SHOW_DIALOG\" value=\"false\" />\n    <option name=\"HIGHLIGHT_CONFLICTS\" value=\"true\" />\n    <option name=\"HIGHLIGHT_NON_ACTIVE_CHANGELIST\" value=\"false\" />\n    <option name=\"LAST_RESOLUTION\" value=\"IGNORE\" />\n  </component>\n  <component name=\"FileEditorManager\">\n    <leaf SIDE_TABS_SIZE_LIMIT_KEY=\"300\">\n      <file pinned=\"false\" current-in-tab=\"true\">\n        <entry file=\"file://$PROJECT_DIR$/src/test/java/HelloWorld.java\">\n          <provider selected=\"true\" editor-type-id=\"text-editor\">\n            <state relative-caret-position=\"274\">\n              <caret line=\"24\" column=\"37\" selection-start-line=\"24\" selection-start-column=\"37\" selection-end-line=\"24\" selection-end-column=\"37\" />\n              <folding>\n                <element signature=\"imports\" expanded=\"true\" />\n              </folding>\n            </state>\n          </provider>\n        </entry>\n      </file>\n      <file pinned=\"false\" current-in-tab=\"false\">\n        <entry file=\"file://$PROJECT_DIR$/pom.xml\">\n          <provider selected=\"true\" editor-type-id=\"text-editor\">\n            <state relative-caret-position=\"340\">\n              <caret line=\"20\" column=\"17\" selection-start-line=\"20\" selection-start-column=\"17\" selection-end-line=\"20\" selection-end-column=\"17\" />\n            </state>\n          </provider>\n        </entry>\n      </file>\n    </leaf>\n  </component>\n  <component name=\"FileTemplateManagerImpl\">\n    <option name=\"RECENT_TEMPLATES\">\n      <list>\n        <option value=\"Class\" />\n      </list>\n    </option>\n  </component>\n  <component name=\"IdeDocumentHistory\">\n    <option name=\"CHANGED_PATHS\">\n      <list>\n        <option value=\"$PROJECT_DIR$/src/test/java/HelloWorld.java\" />\n        <option value=\"$PROJECT_DIR$/pom.xml\" />\n      </list>\n    </option>\n  </component>\n  <component name=\"MavenImportPreferences\">\n    <option name=\"importingSettings\">\n      <MavenImportingSettings>\n        <option name=\"importAutomatically\" value=\"true\" />\n      </MavenImportingSettings>\n    </option>\n  </component>\n  <component name=\"MavenProjectNavigator\">\n    <treeState>\n      <expand>\n        <path>\n          <item name=\"\" type=\"16c1761:MavenProjectsStructure$RootNode\" />\n          <item name=\"2\" type=\"9519ce18:MavenProjectsStructure$ProjectNode\" />\n        </path>\n        <path>\n          <item name=\"\" type=\"16c1761:MavenProjectsStructure$RootNode\" />\n          <item name=\"2\" type=\"9519ce18:MavenProjectsStructure$ProjectNode\" />\n          <item name=\"Lifecycle\" type=\"58874e2:MavenProjectsStructure$LifecycleNode\" />\n        </path>\n      </expand>\n      <select />\n    </treeState>\n  </component>\n  <component name=\"ProjectFrameBounds\" extendedState=\"6\">\n    <option name=\"x\" value=\"-9\" />\n    <option name=\"y\" value=\"-9\" />\n    <option name=\"width\" value=\"1938\" />\n    <option name=\"height\" value=\"1038\" />\n  </component>\n  <component name=\"ProjectView\">\n    <navigator proportions=\"\" version=\"1\">\n      <foldersAlwaysOnTop value=\"true\" />\n    </navigator>\n    <panes>\n      <pane id=\"ProjectPane\">\n        <subPane>\n          <expand>\n            <path>\n              <item name=\"jen2\" type=\"b2602c69:ProjectViewProjectNode\" />\n              <item name=\"jen2\" type=\"462c0819:PsiDirectoryNode\" />\n            </path>\n            <path>\n              <item name=\"jen2\" type=\"b2602c69:ProjectViewProjectNode\" />\n              <item name=\"jen2\" type=\"462c0819:PsiDirectoryNode\" />\n              <item name=\"src\" type=\"462c0819:PsiDirectoryNode\" />\n            </path>\n          </expand>\n          <select />\n        </subPane>\n      </pane>\n      <pane id=\"PackagesPane\" />\n      <pane id=\"Scope\" />\n    </panes>\n  </component>\n  <component name=\"PropertiesComponent\">\n    <property name=\"com.android.tools.idea.instantapp.provision.ProvisionBeforeRunTaskProvider.myTimeStamp\" value=\"1646408725568\" />\n    <property name=\"project.structure.last.edited\" value=\"Modules\" />\n    <property name=\"project.structure.proportion\" value=\"0.15\" />\n    <property name=\"project.structure.side.proportion\" value=\"0.2\" />\n    <property name=\"settings.editor.selected.configurable\" value=\"reference.projectsettings.compiler.javacompiler\" />\n  </component>\n  <component name=\"RunDashboard\">\n    <option name=\"ruleStates\">\n      <list>\n        <RuleState>\n          <option name=\"name\" value=\"ConfigurationTypeDashboardGroupingRule\" />\n        </RuleState>\n        <RuleState>\n          <option name=\"name\" value=\"StatusDashboardGroupingRule\" />\n        </RuleState>\n      </list>\n    </option>\n  </component>\n  <component name=\"RunManager\">\n    <configuration name=\"HelloWorld\" type=\"Application\" factoryName=\"Application\" temporary=\"true\" nameIsGenerated=\"true\">\n      <option name=\"MAIN_CLASS_NAME\" value=\"HelloWorld\" />\n      <module name=\"jen2\" />\n      <method v=\"2\">\n        <option name=\"Make\" enabled=\"true\" />\n      </method>\n    </configuration>\n    <recent_temporary>\n      <list>\n        <item itemvalue=\"Application.HelloWorld\" />\n      </list>\n    </recent_temporary>\n  </component>\n  <component name=\"SvnConfiguration\">\n    <configuration />\n  </component>\n  <component name=\"TaskManager\">\n    <task active=\"true\" id=\"Default\" summary=\"Default task\">\n      <changelist id=\"4c19c3e6-a2df-4245-87a4-ff2b509e88d1\" name=\"Default Changelist\" comment=\"\" />\n      <created>1645977233181</created>\n      <option name=\"number\" value=\"Default\" />\n      <option name=\"presentableId\" value=\"Default\" />\n      <updated>1645977233181</updated>\n    </task>\n    <servers />\n  </component>\n  <component name=\"TodoView\">\n    <todo-panel id=\"selected-file\">\n      <is-autoscroll-to-source value=\"true\" />\n    </todo-panel>\n    <todo-panel id=\"all\">\n      <are-packages-shown value=\"true\" />\n      <is-autoscroll-to-source value=\"true\" />\n    </todo-panel>\n  </component>\n  <component name=\"ToolWindowManager\">\n    <frame x=\"-7\" y=\"-7\" width=\"1550\" height=\"830\" extended-state=\"6\" />\n    <editor active=\"true\" />\n    <layout>\n      <window_info content_ui=\"combo\" id=\"Project\" order=\"0\" sideWeight=\"0.49370277\" visible=\"true\" weight=\"0.25302014\" />\n      <window_info id=\"Structure\" order=\"1\" sideWeight=\"0.50629723\" side_tool=\"true\" visible=\"true\" weight=\"0.25302014\" />\n      <window_info id=\"Image Layers\" order=\"2\" />\n      <window_info id=\"Designer\" order=\"3\" />\n      <window_info id=\"UI Designer\" order=\"4\" />\n      <window_info id=\"Capture Tool\" order=\"5\" />\n      <window_info id=\"Favorites\" order=\"6\" side_tool=\"true\" />\n      <window_info anchor=\"bottom\" id=\"Message\" order=\"0\" />\n      <window_info anchor=\"bottom\" id=\"Find\" order=\"1\" />\n      <window_info active=\"true\" anchor=\"bottom\" id=\"Run\" order=\"2\" visible=\"true\" weight=\"0.4312321\" />\n      <window_info anchor=\"bottom\" id=\"Debug\" order=\"3\" weight=\"0.4\" />\n      <window_info anchor=\"bottom\" id=\"Cvs\" order=\"4\" weight=\"0.25\" />\n      <window_info anchor=\"bottom\" id=\"Inspection\" order=\"5\" weight=\"0.4\" />\n      <window_info anchor=\"bottom\" id=\"TODO\" order=\"6\" weight=\"0.3295129\" />\n      <window_info anchor=\"bottom\" id=\"Docker\" order=\"7\" show_stripe_button=\"false\" />\n      <window_info anchor=\"bottom\" id=\"Version Control\" order=\"8\" />\n      <window_info anchor=\"bottom\" id=\"Terminal\" order=\"9\" weight=\"0.3295129\" />\n      <window_info anchor=\"bottom\" id=\"Event Log\" order=\"10\" side_tool=\"true\" />\n      <window_info anchor=\"bottom\" id=\"Messages\" order=\"11\" weight=\"0.32896176\" />\n      <window_info anchor=\"right\" id=\"Commander\" internal_type=\"SLIDING\" order=\"0\" type=\"SLIDING\" weight=\"0.4\" />\n      <window_info anchor=\"right\" id=\"Ant Build\" order=\"1\" weight=\"0.25\" />\n      <window_info anchor=\"right\" content_ui=\"combo\" id=\"Hierarchy\" order=\"2\" weight=\"0.25\" />\n      <window_info anchor=\"right\" id=\"Palette\" order=\"3\" />\n      <window_info anchor=\"right\" id=\"Theme Preview\" order=\"4\" />\n      <window_info anchor=\"right\" id=\"Maven\" order=\"5\" visible=\"true\" weight=\"0.4147651\" />\n      <window_info anchor=\"right\" id=\"Capture Analysis\" order=\"6\" />\n      <window_info anchor=\"right\" id=\"Palette&#9;\" order=\"7\" />\n    </layout>\n  </component>\n  <component name=\"editorHistoryManager\">\n    <entry file=\"jar://$MAVEN_REPOSITORY$/io/jenetics/jenetics/5.2.0/jenetics-5.2.0.jar!/io/jenetics/BitChromosome.class\">\n      <provider selected=\"true\" editor-type-id=\"text-editor\">\n        <state relative-caret-position=\"221\">\n          <caret line=\"35\" column=\"12\" selection-start-line=\"35\" selection-start-column=\"12\" selection-end-line=\"35\" selection-end-column=\"12\" />\n          <folding>\n            <element signature=\"e#1104#1314#0\" />\n          </folding>\n        </state>\n      </provider>\n    </entry>\n    <entry file=\"file://$PROJECT_DIR$/pom.xml\">\n      <provider selected=\"true\" editor-type-id=\"text-editor\">\n        <state relative-caret-position=\"340\">\n          <caret line=\"20\" column=\"17\" selection-start-line=\"20\" selection-start-column=\"17\" selection-end-line=\"20\" selection-end-column=\"17\" />\n        </state>\n      </provider>\n    </entry>\n    <entry file=\"file://$PROJECT_DIR$/src/test/java/HelloWorld.java\">\n      <provider selected=\"true\" editor-type-id=\"text-editor\">\n        <state relative-caret-position=\"274\">\n          <caret line=\"24\" column=\"37\" selection-start-line=\"24\" selection-start-column=\"37\" selection-end-line=\"24\" selection-end-column=\"37\" />\n          <folding>\n            <element signature=\"imports\" expanded=\"true\" />\n          </folding>\n        </state>\n      </provider>\n    </entry>\n  </component>\n  <component name=\"masterDetails\">\n    <states>\n      <state key=\"ArtifactsStructureConfigurable.UI\">\n        <settings>\n          <artifact-editor />\n          <splitter-proportions>\n            <option name=\"proportions\">\n              <list>\n                <option value=\"0.2\" />\n              </list>\n            </option>\n          </splitter-proportions>\n        </settings>\n      </state>\n      <state key=\"FacetStructureConfigurable.UI\">\n        <settings>\n          <last-edited>No facets are configured</last-edited>\n          <splitter-proportions>\n            <option name=\"proportions\">\n              <list>\n                <option value=\"0.2\" />\n              </list>\n            </option>\n          </splitter-proportions>\n        </settings>\n      </state>\n      <state key=\"GlobalLibrariesConfigurable.UI\">\n        <settings>\n          <splitter-proportions>\n            <option name=\"proportions\">\n              <list>\n                <option value=\"0.2\" />\n              </list>\n            </option>\n          </splitter-proportions>\n        </settings>\n      </state>\n      <state key=\"JdkListConfigurable.UI\">\n        <settings>\n          <last-edited>17</last-edited>\n          <splitter-proportions>\n            <option name=\"proportions\">\n              <list>\n                <option value=\"0.2\" />\n              </list>\n            </option>\n          </splitter-proportions>\n        </settings>\n      </state>\n      <state key=\"ModuleStructureConfigurable.UI\">\n        <settings>\n          <last-edited>jen2</last-edited>\n          <splitter-proportions>\n            <option name=\"proportions\">\n              <list>\n                <option value=\"0.2\" />\n                <option value=\"0.6\" />\n              </list>\n            </option>\n          </splitter-proportions>\n        </settings>\n      </state>\n      <state key=\"ProjectJDKs.UI\">\n        <settings>\n          <last-edited>17</last-edited>\n          <splitter-proportions>\n            <option name=\"proportions\">\n              <list>\n                <option value=\"0.2\" />\n              </list>\n            </option>\n          </splitter-proportions>\n        </settings>\n      </state>\n      <state key=\"ProjectLibrariesConfigurable.UI\">\n        <settings>\n          <last-edited>Maven: io.jenetics:jenetics:5.2.0</last-edited>\n          <splitter-proportions>\n            <option name=\"proportions\">\n              <list>\n                <option value=\"0.2\" />\n              </list>\n            </option>\n          </splitter-proportions>\n        </settings>\n      </state>\n    </states>\n  </component>\n  <component name=\"mavenExecuteGoalHistory\">\n    <option value=\"$PROJECT_DIR$\" />\n    <option value=\"-v\" />\n  </component>\n</project>
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/.idea/workspace.xml b/.idea/workspace.xml
+--- a/.idea/workspace.xml	(revision 930f8e5ed3e482521c71035f4e764f2d482e9761)
++++ b/.idea/workspace.xml	(date 1647081443978)
+@@ -1,316 +1,96 @@
+ <?xml version="1.0" encoding="UTF-8"?>
+ <project version="4">
++  <component name="AutoImportSettings">
++    <option name="autoReloadType" value="SELECTIVE" />
++  </component>
+   <component name="ChangeListManager">
+-    <list default="true" id="4c19c3e6-a2df-4245-87a4-ff2b509e88d1" name="Default Changelist" comment="" />
+-    <ignored path="$PROJECT_DIR$/out/" />
+-    <ignored path="$PROJECT_DIR$/target/" />
+-    <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
++    <list default="true" id="b5d0c081-7c53-4206-8567-55a3686ee1dd" name="Changes" comment="">
++      <change afterPath="$PROJECT_DIR$/.idea/jarRepositories.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/uiDesigner.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
++      <change beforePath="$PROJECT_DIR$/.idea/compiler.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/compiler.xml" afterDir="false" />
++      <change beforePath="$PROJECT_DIR$/.idea/encodings.xml" beforeDir="false" />
++      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
++      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
++      <change beforePath="$PROJECT_DIR$/src/main/java/GAproblem.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/GAproblem2.java" afterDir="false" />
++      <change beforePath="$PROJECT_DIR$/src/test/java/GAproblem.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/test/java/GAproblem.java" afterDir="false" />
++    </list>
+     <option name="SHOW_DIALOG" value="false" />
+     <option name="HIGHLIGHT_CONFLICTS" value="true" />
+     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+     <option name="LAST_RESOLUTION" value="IGNORE" />
+   </component>
+-  <component name="FileEditorManager">
+-    <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
+-      <file pinned="false" current-in-tab="true">
+-        <entry file="file://$PROJECT_DIR$/src/test/java/HelloWorld.java">
+-          <provider selected="true" editor-type-id="text-editor">
+-            <state relative-caret-position="274">
+-              <caret line="24" column="37" selection-start-line="24" selection-start-column="37" selection-end-line="24" selection-end-column="37" />
+-              <folding>
+-                <element signature="imports" expanded="true" />
+-              </folding>
+-            </state>
+-          </provider>
+-        </entry>
+-      </file>
+-      <file pinned="false" current-in-tab="false">
+-        <entry file="file://$PROJECT_DIR$/pom.xml">
+-          <provider selected="true" editor-type-id="text-editor">
+-            <state relative-caret-position="340">
+-              <caret line="20" column="17" selection-start-line="20" selection-start-column="17" selection-end-line="20" selection-end-column="17" />
+-            </state>
+-          </provider>
+-        </entry>
+-      </file>
+-    </leaf>
+-  </component>
+-  <component name="FileTemplateManagerImpl">
+-    <option name="RECENT_TEMPLATES">
+-      <list>
+-        <option value="Class" />
+-      </list>
+-    </option>
++  <component name="Git.Settings">
++    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+   </component>
+-  <component name="IdeDocumentHistory">
+-    <option name="CHANGED_PATHS">
+-      <list>
+-        <option value="$PROJECT_DIR$/src/test/java/HelloWorld.java" />
+-        <option value="$PROJECT_DIR$/pom.xml" />
+-      </list>
+-    </option>
++  <component name="MarkdownSettingsMigration">
++    <option name="stateVersion" value="1" />
+   </component>
+   <component name="MavenImportPreferences">
+-    <option name="importingSettings">
+-      <MavenImportingSettings>
+-        <option name="importAutomatically" value="true" />
+-      </MavenImportingSettings>
++    <option name="generalSettings">
++      <MavenGeneralSettings>
++        <option name="useMavenConfig" value="true" />
++      </MavenGeneralSettings>
+     </option>
+   </component>
+-  <component name="MavenProjectNavigator">
+-    <treeState>
+-      <expand>
+-        <path>
+-          <item name="" type="16c1761:MavenProjectsStructure$RootNode" />
+-          <item name="2" type="9519ce18:MavenProjectsStructure$ProjectNode" />
+-        </path>
+-        <path>
+-          <item name="" type="16c1761:MavenProjectsStructure$RootNode" />
+-          <item name="2" type="9519ce18:MavenProjectsStructure$ProjectNode" />
+-          <item name="Lifecycle" type="58874e2:MavenProjectsStructure$LifecycleNode" />
+-        </path>
+-      </expand>
+-      <select />
+-    </treeState>
+-  </component>
+-  <component name="ProjectFrameBounds" extendedState="6">
+-    <option name="x" value="-9" />
+-    <option name="y" value="-9" />
+-    <option name="width" value="1938" />
+-    <option name="height" value="1038" />
+-  </component>
+-  <component name="ProjectView">
+-    <navigator proportions="" version="1">
+-      <foldersAlwaysOnTop value="true" />
+-    </navigator>
+-    <panes>
+-      <pane id="ProjectPane">
+-        <subPane>
+-          <expand>
+-            <path>
+-              <item name="jen2" type="b2602c69:ProjectViewProjectNode" />
+-              <item name="jen2" type="462c0819:PsiDirectoryNode" />
+-            </path>
+-            <path>
+-              <item name="jen2" type="b2602c69:ProjectViewProjectNode" />
+-              <item name="jen2" type="462c0819:PsiDirectoryNode" />
+-              <item name="src" type="462c0819:PsiDirectoryNode" />
+-            </path>
+-          </expand>
+-          <select />
+-        </subPane>
+-      </pane>
+-      <pane id="PackagesPane" />
+-      <pane id="Scope" />
+-    </panes>
++  <component name="ProjectId" id="26HRzN4wHbBrnI4EZOKkKM8x9ZC" />
++  <component name="ProjectViewState">
++    <option name="hideEmptyMiddlePackages" value="true" />
++    <option name="showLibraryContents" value="true" />
+   </component>
+   <component name="PropertiesComponent">
+-    <property name="com.android.tools.idea.instantapp.provision.ProvisionBeforeRunTaskProvider.myTimeStamp" value="1646408725568" />
+-    <property name="project.structure.last.edited" value="Modules" />
+-    <property name="project.structure.proportion" value="0.15" />
+-    <property name="project.structure.side.proportion" value="0.2" />
+-    <property name="settings.editor.selected.configurable" value="reference.projectsettings.compiler.javacompiler" />
+-  </component>
+-  <component name="RunDashboard">
+-    <option name="ruleStates">
+-      <list>
+-        <RuleState>
+-          <option name="name" value="ConfigurationTypeDashboardGroupingRule" />
+-        </RuleState>
+-        <RuleState>
+-          <option name="name" value="StatusDashboardGroupingRule" />
+-        </RuleState>
+-      </list>
+-    </option>
++    <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
++    <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
++    <property name="SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
++    <property name="WebServerToolWindowFactoryState" value="false" />
++    <property name="last_opened_file_path" value="$PROJECT_DIR$" />
+   </component>
+-  <component name="RunManager">
+-    <configuration name="HelloWorld" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
+-      <option name="MAIN_CLASS_NAME" value="HelloWorld" />
+-      <module name="jen2" />
++  <component name="RunManager" selected="Application.GAproblem">
++    <configuration name="GAproblem" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
++      <option name="MAIN_CLASS_NAME" value="GAproblem" />
++      <module name="2" />
++      <method v="2">
++        <option name="Make" enabled="true" />
++      </method>
++    </configuration>
++    <configuration name="GAproblem2" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
++      <option name="MAIN_CLASS_NAME" value="GAproblem2" />
++      <module name="2" />
+       <method v="2">
+         <option name="Make" enabled="true" />
+       </method>
+     </configuration>
+     <recent_temporary>
+       <list>
+-        <item itemvalue="Application.HelloWorld" />
++        <item itemvalue="Application.GAproblem" />
++        <item itemvalue="Application.GAproblem2" />
+       </list>
+     </recent_temporary>
+   </component>
+-  <component name="SvnConfiguration">
+-    <configuration />
+-  </component>
++  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+   <component name="TaskManager">
+     <task active="true" id="Default" summary="Default task">
+-      <changelist id="4c19c3e6-a2df-4245-87a4-ff2b509e88d1" name="Default Changelist" comment="" />
+-      <created>1645977233181</created>
++      <changelist id="b5d0c081-7c53-4206-8567-55a3686ee1dd" name="Changes" comment="" />
++      <created>1647078787379</created>
+       <option name="number" value="Default" />
+       <option name="presentableId" value="Default" />
+-      <updated>1645977233181</updated>
++      <updated>1647078787379</updated>
++      <workItem from="1647078788499" duration="2468000" />
+     </task>
+     <servers />
+   </component>
+-  <component name="TodoView">
+-    <todo-panel id="selected-file">
+-      <is-autoscroll-to-source value="true" />
+-    </todo-panel>
+-    <todo-panel id="all">
+-      <are-packages-shown value="true" />
+-      <is-autoscroll-to-source value="true" />
+-    </todo-panel>
++  <component name="TypeScriptGeneratedFilesManager">
++    <option name="version" value="3" />
+   </component>
+-  <component name="ToolWindowManager">
+-    <frame x="-7" y="-7" width="1550" height="830" extended-state="6" />
+-    <editor active="true" />
+-    <layout>
+-      <window_info content_ui="combo" id="Project" order="0" sideWeight="0.49370277" visible="true" weight="0.25302014" />
+-      <window_info id="Structure" order="1" sideWeight="0.50629723" side_tool="true" visible="true" weight="0.25302014" />
+-      <window_info id="Image Layers" order="2" />
+-      <window_info id="Designer" order="3" />
+-      <window_info id="UI Designer" order="4" />
+-      <window_info id="Capture Tool" order="5" />
+-      <window_info id="Favorites" order="6" side_tool="true" />
+-      <window_info anchor="bottom" id="Message" order="0" />
+-      <window_info anchor="bottom" id="Find" order="1" />
+-      <window_info active="true" anchor="bottom" id="Run" order="2" visible="true" weight="0.4312321" />
+-      <window_info anchor="bottom" id="Debug" order="3" weight="0.4" />
+-      <window_info anchor="bottom" id="Cvs" order="4" weight="0.25" />
+-      <window_info anchor="bottom" id="Inspection" order="5" weight="0.4" />
+-      <window_info anchor="bottom" id="TODO" order="6" weight="0.3295129" />
+-      <window_info anchor="bottom" id="Docker" order="7" show_stripe_button="false" />
+-      <window_info anchor="bottom" id="Version Control" order="8" />
+-      <window_info anchor="bottom" id="Terminal" order="9" weight="0.3295129" />
+-      <window_info anchor="bottom" id="Event Log" order="10" side_tool="true" />
+-      <window_info anchor="bottom" id="Messages" order="11" weight="0.32896176" />
+-      <window_info anchor="right" id="Commander" internal_type="SLIDING" order="0" type="SLIDING" weight="0.4" />
+-      <window_info anchor="right" id="Ant Build" order="1" weight="0.25" />
+-      <window_info anchor="right" content_ui="combo" id="Hierarchy" order="2" weight="0.25" />
+-      <window_info anchor="right" id="Palette" order="3" />
+-      <window_info anchor="right" id="Theme Preview" order="4" />
+-      <window_info anchor="right" id="Maven" order="5" visible="true" weight="0.4147651" />
+-      <window_info anchor="right" id="Capture Analysis" order="6" />
+-      <window_info anchor="right" id="Palette&#9;" order="7" />
+-    </layout>
+-  </component>
+-  <component name="editorHistoryManager">
+-    <entry file="jar://$MAVEN_REPOSITORY$/io/jenetics/jenetics/5.2.0/jenetics-5.2.0.jar!/io/jenetics/BitChromosome.class">
+-      <provider selected="true" editor-type-id="text-editor">
+-        <state relative-caret-position="221">
+-          <caret line="35" column="12" selection-start-line="35" selection-start-column="12" selection-end-line="35" selection-end-column="12" />
+-          <folding>
+-            <element signature="e#1104#1314#0" />
+-          </folding>
+-        </state>
+-      </provider>
+-    </entry>
+-    <entry file="file://$PROJECT_DIR$/pom.xml">
+-      <provider selected="true" editor-type-id="text-editor">
+-        <state relative-caret-position="340">
+-          <caret line="20" column="17" selection-start-line="20" selection-start-column="17" selection-end-line="20" selection-end-column="17" />
+-        </state>
+-      </provider>
+-    </entry>
+-    <entry file="file://$PROJECT_DIR$/src/test/java/HelloWorld.java">
+-      <provider selected="true" editor-type-id="text-editor">
+-        <state relative-caret-position="274">
+-          <caret line="24" column="37" selection-start-line="24" selection-start-column="37" selection-end-line="24" selection-end-column="37" />
+-          <folding>
+-            <element signature="imports" expanded="true" />
+-          </folding>
+-        </state>
+-      </provider>
+-    </entry>
+-  </component>
+-  <component name="masterDetails">
+-    <states>
+-      <state key="ArtifactsStructureConfigurable.UI">
+-        <settings>
+-          <artifact-editor />
+-          <splitter-proportions>
+-            <option name="proportions">
+-              <list>
+-                <option value="0.2" />
+-              </list>
+-            </option>
+-          </splitter-proportions>
+-        </settings>
+-      </state>
+-      <state key="FacetStructureConfigurable.UI">
+-        <settings>
+-          <last-edited>No facets are configured</last-edited>
+-          <splitter-proportions>
+-            <option name="proportions">
+-              <list>
+-                <option value="0.2" />
+-              </list>
+-            </option>
+-          </splitter-proportions>
+-        </settings>
+-      </state>
+-      <state key="GlobalLibrariesConfigurable.UI">
+-        <settings>
+-          <splitter-proportions>
+-            <option name="proportions">
+-              <list>
+-                <option value="0.2" />
+-              </list>
+-            </option>
+-          </splitter-proportions>
+-        </settings>
+-      </state>
+-      <state key="JdkListConfigurable.UI">
+-        <settings>
+-          <last-edited>17</last-edited>
+-          <splitter-proportions>
+-            <option name="proportions">
+-              <list>
+-                <option value="0.2" />
+-              </list>
+-            </option>
+-          </splitter-proportions>
+-        </settings>
+-      </state>
+-      <state key="ModuleStructureConfigurable.UI">
+-        <settings>
+-          <last-edited>jen2</last-edited>
+-          <splitter-proportions>
+-            <option name="proportions">
+-              <list>
+-                <option value="0.2" />
+-                <option value="0.6" />
+-              </list>
+-            </option>
+-          </splitter-proportions>
+-        </settings>
+-      </state>
+-      <state key="ProjectJDKs.UI">
+-        <settings>
+-          <last-edited>17</last-edited>
+-          <splitter-proportions>
+-            <option name="proportions">
+-              <list>
+-                <option value="0.2" />
+-              </list>
+-            </option>
+-          </splitter-proportions>
+-        </settings>
+-      </state>
+-      <state key="ProjectLibrariesConfigurable.UI">
+-        <settings>
+-          <last-edited>Maven: io.jenetics:jenetics:5.2.0</last-edited>
+-          <splitter-proportions>
+-            <option name="proportions">
+-              <list>
+-                <option value="0.2" />
+-              </list>
+-            </option>
+-          </splitter-proportions>
+-        </settings>
+-      </state>
+-    </states>
+-  </component>
+-  <component name="mavenExecuteGoalHistory">
+-    <option value="$PROJECT_DIR$" />
+-    <option value="-v" />
++  <component name="Vcs.Log.Tabs.Properties">
++    <option name="TAB_STATES">
++      <map>
++        <entry key="MAIN">
++          <value>
++            <State />
++          </value>
++        </entry>
++      </map>
++    </option>
+   </component>
+ </project>
+\ No newline at end of file
+Index: .idea/vcs.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/.idea/vcs.xml b/.idea/vcs.xml
+new file mode 100644
+--- /dev/null	(date 1647078807664)
++++ b/.idea/vcs.xml	(date 1647078807664)
+@@ -0,0 +1,6 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<project version="4">
++  <component name="VcsDirectoryMappings">
++    <mapping directory="" vcs="Git" />
++  </component>
++</project>
+\ No newline at end of file
+Index: .idea/misc.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+><?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<project version=\"4\">\n  <component name=\"ExternalStorageConfigurationManager\" enabled=\"true\" />\n  <component name=\"MavenProjectsManager\">\n    <option name=\"originalFiles\">\n      <list>\n        <option value=\"$PROJECT_DIR$/pom.xml\" />\n      </list>\n    </option>\n  </component>\n  <component name=\"ProjectRootManager\" version=\"2\" languageLevel=\"JDK_1_8\" default=\"false\" project-jdk-name=\"17\" project-jdk-type=\"JavaSDK\">\n    <output url=\"file://$PROJECT_DIR$/out\" />\n  </component>\n</project>
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/.idea/misc.xml b/.idea/misc.xml
+--- a/.idea/misc.xml	(revision 930f8e5ed3e482521c71035f4e764f2d482e9761)
++++ b/.idea/misc.xml	(date 1647078807666)
+@@ -8,7 +8,5 @@
+       </list>
+     </option>
+   </component>
+-  <component name="ProjectRootManager" version="2" languageLevel="JDK_1_8" default="false" project-jdk-name="17" project-jdk-type="JavaSDK">
+-    <output url="file://$PROJECT_DIR$/out" />
+-  </component>
++  <component name="ProjectRootManager" version="2" languageLevel="JDK_17" default="true" project-jdk-name="17" project-jdk-type="JavaSDK" />
+ </project>
+\ No newline at end of file
+Index: .idea/compiler.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+><?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<project version=\"4\">\n  <component name=\"CompilerConfiguration\">\n    <annotationProcessing>\n      <profile name=\"Maven default annotation processors profile\" enabled=\"true\">\n        <sourceOutputDir name=\"target/generated-sources/annotations\" />\n        <sourceTestOutputDir name=\"target/generated-test-sources/test-annotations\" />\n        <outputRelativeToContentRoot value=\"true\" />\n        <module name=\"jen2\" />\n      </profile>\n    </annotationProcessing>\n    <bytecodeTargetLevel target=\"8\" />\n  </component>\n</project>
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/.idea/compiler.xml b/.idea/compiler.xml
+--- a/.idea/compiler.xml	(revision 930f8e5ed3e482521c71035f4e764f2d482e9761)
++++ b/.idea/compiler.xml	(date 1647078807669)
+@@ -6,9 +6,8 @@
+         <sourceOutputDir name="target/generated-sources/annotations" />
+         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
+         <outputRelativeToContentRoot value="true" />
+-        <module name="jen2" />
++        <module name="2" />
+       </profile>
+     </annotationProcessing>
+-    <bytecodeTargetLevel target="8" />
+   </component>
+ </project>
+\ No newline at end of file
+Index: .idea/jarRepositories.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/.idea/jarRepositories.xml b/.idea/jarRepositories.xml
+new file mode 100644
+--- /dev/null	(date 1647078807671)
++++ b/.idea/jarRepositories.xml	(date 1647078807671)
+@@ -0,0 +1,20 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<project version="4">
++  <component name="RemoteRepositoriesConfiguration">
++    <remote-repository>
++      <option name="id" value="central" />
++      <option name="name" value="Central Repository" />
++      <option name="url" value="https://repo.maven.apache.org/maven2" />
++    </remote-repository>
++    <remote-repository>
++      <option name="id" value="central" />
++      <option name="name" value="Maven Central repository" />
++      <option name="url" value="https://repo1.maven.org/maven2" />
++    </remote-repository>
++    <remote-repository>
++      <option name="id" value="jboss.community" />
++      <option name="name" value="JBoss Community repository" />
++      <option name="url" value="https://repository.jboss.org/nexus/content/repositories/public/" />
++    </remote-repository>
++  </component>
++</project>
+\ No newline at end of file

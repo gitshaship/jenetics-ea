@@ -11,7 +11,7 @@ import io.jenetics.util.MSeq;
 import io.jenetics.util.Seq;
 
 
-public class GAproblem {
+public class GAproblem2 {
     // 2.) Definition of the fitness function.
     private static double eval(Genotype<DoubleGene> gt) {
         double[] dt =  gt.chromosome()
@@ -89,7 +89,7 @@ public class GAproblem {
 
 
         final Engine<DoubleGene, Double> engine = Engine
-                .builder(GAproblem::eval, gtf)
+                .builder(GAproblem2::eval, gtf)
                 .populationSize(500)
                 .alterers(
                         getCrossOverFunction("SinglePoint", 1),
