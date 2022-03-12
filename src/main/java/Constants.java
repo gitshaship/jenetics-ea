@@ -3,6 +3,7 @@ public final class Constants {
     public static final String TRUNCATION_SELECTOR = "TRUNCATION_SELECTOR";
     public static final String MONTECARLO_SELECTOR = "MONTECARLO_SELECTOR";
     public static final String ROULETTEWHEEL_SELECTOR = "ROULETTEWHEEL_SELECTOR";
+    public static final String PROBABILITY_SELECTOR = "PROBABILITY_SELECTOR";
 
     //Crossover functions
     public static final String SINGLE_POINT = "SINGLE_POINT";

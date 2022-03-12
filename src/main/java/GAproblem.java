@@ -1,8 +1,6 @@
-import static io.jenetics.engine.EvolutionResult.toBestPhenotype;
-import static io.jenetics.engine.Limits.bySteadyFitness;
-
 import io.jenetics.*;
 import io.jenetics.engine.Engine;
+import io.jenetics.engine.EvolutionResult;
 import io.jenetics.engine.EvolutionStatistics;
 import io.jenetics.ext.SimulatedBinaryCrossover;
 import io.jenetics.util.Factory;
@@ -10,33 +8,56 @@ import io.jenetics.util.ISeq;
 import io.jenetics.util.MSeq;
 import io.jenetics.util.Seq;
 
+import java.util.Iterator;
+
+import static io.jenetics.engine.Limits.bySteadyFitness;
+
 
 public class GAproblem {
-    // 2.) Definition of the fitness function.
+
+    //GenoType
+    private static Factory<Genotype<DoubleGene>> gtf =
+            Genotype.of(DoubleChromosome.of(0.1, 10, 6));
+
+    //fitness function for performance
     private static double eval(Genotype<DoubleGene> gt) {
-        double[] dt =  gt.chromosome()
+        double[] dt = gt.chromosome()
                 .as(DoubleChromosome.class)
                 .toArray();
 
-        double sum = 0.0;
+        // index 0 - Weight / 1000
+        // index 1 - Fuel Consumption/10
+        // index 2 - Engine capacity/1000
+        // index 3 - Passenger capacity
+        // index 4 - Engine power/100
+        // index 5 - Battery capacity
 
-        for(int i=0; i<dt.length; i++){
-            sum += dt[i];
-        }
-        return sum;
+        double ratio1 = dt[0] / dt[1];
+        double ratio2 = dt[2] / dt[1];
+        double ratio3 = dt[3] / dt[1];
+        double ratio4 = dt[4] / dt[1];
+        double ratio5 = 1 / (dt[5] * dt[1]);
+
+        return ratio1 + ratio2 + (0.65 * ratio3) + (0.35 * ratio4) + ratio5;
     }
 
-    private static Crossover getCrossOverFunction(String type, double args){
+    private static Crossover getCrossOverFunction(String type, double args) {
         Crossover function;
-        switch(type){
-            case "SimulatedBinary":
-                function =  new SimulatedBinaryCrossover(args);
+        switch (type) {
+            case Constants.SIMULATED_BINARY:
+                function = new SimulatedBinaryCrossover(args);
                 break;
-            case "SinglePoint":
-                function =  new SinglePointCrossover(args);
+            case Constants.SINGLE_POINT:
+                function = new SinglePointCrossover(args);
                 break;
-            case "DoublePoint":
-                function =  new MultiPointCrossover(args);
+            case Constants.MULTI_POINT:
+                function = new MultiPointCrossover(args);
+                break;
+            case Constants.PMX:
+                function = new PartiallyMatchedCrossover(args);
+                break;
+            case Constants.LINE:
+                function = new LineCrossover(args);
                 break;
             default:
                 function = new Crossover(args) {
@@ -49,11 +70,14 @@ public class GAproblem {
         return function;
     }
 
-    private static Mutator getMutationFunction(String type, double args){
+    private static Mutator<DoubleGene, Double> getMutationFunction(String type, double args) {
         Mutator function;
-        switch(type){
-            case "Gaussian":
-                function =  new GaussianMutator(args);
+        switch (type) {
+            case Constants.GAUSSIAN_MUTATOR:
+                function = new GaussianMutator(args);
+                break;
+            case Constants.SWAP_MUTATOR:
+                function = new SwapMutator(args);
                 break;
             default:
                 function = new Mutator(args);
@@ -61,14 +85,19 @@ public class GAproblem {
         return function;
     }
 
-    private static Selector getSelectionFunction(String type, int args){
+    private static Selector<DoubleGene, Double> getSelectionFunction(String type, int args) {
         Selector function;
-        switch(type){
-            case "Tournament":
-                function =  new TournamentSelector(args);
+        switch (type) {
+            case Constants.TOURNAMENT_SELECTOR:
+                return new TournamentSelector(args);
+            case Constants.ROULETTEWHEEL_SELECTOR:
+                function = new RouletteWheelSelector();
                 break;
-            case "RouletteWheel":
-                function =  new RouletteWheelSelector();
+            case Constants.TRUNCATION_SELECTOR:
+                function = new TruncationSelector();
+                break;
+            case Constants.MONTECARLO_SELECTOR:
+                function = new MonteCarloSelector();
                 break;
             default:
                 function = new Selector() {
@@ -82,39 +111,47 @@ public class GAproblem {
 
     }
 
+
     public static void main(String[] args) {
 
-        Factory<Genotype<DoubleGene>> gtf =
-                Genotype.of(DoubleChromosome.of(-5.5, 5.5, 10));
-
-
-        final Engine<DoubleGene, Double> engine = Engine
+        Engine<DoubleGene, Double> engine = Engine
                 .builder(GAproblem::eval, gtf)
                 .populationSize(500)
                 .alterers(
-                        getCrossOverFunction("SinglePoint", 1),
-                        getMutationFunction("Default",1.0/5)
+                        getCrossOverFunction(Constants.SINGLE_POINT, 0.5),
+                        getMutationFunction("", 1.0 / 5)
+
                 )
-                //.offspringSelector(getSelectionFunction("Roulette", 5))
+                .offspringFraction(0.7)
+                .offspringSelector(getSelectionFunction(Constants.TOURNAMENT_SELECTOR, 5))
+                .survivorsSelector(getSelectionFunction(Constants.TRUNCATION_SELECTOR, 5))
                 .maximizing()
                 .build();
 
         final EvolutionStatistics<Double, ?>
                 statistics = EvolutionStatistics.ofNumber();
 
-        final Phenotype<DoubleGene, Double> best  = engine.stream()
+        final ISeq<EvolutionResult<DoubleGene, Double>> results = engine
+                .stream()
                 .limit(bySteadyFitness(7))
                 .limit(100)
                 .peek(statistics)
-                .collect(toBestPhenotype());
+                //.flatMap(MinMax.toStrictlyIncreasing())
+                .collect(ISeq.toISeq());
 
         System.out.println(statistics);
-        System.out.println(best);
         System.out.println("\n\n");
-        System.out.printf(
-                "Genotype of best item: %s%n",
-                best.genotype()
-        );
 
+        Iterator<EvolutionResult<DoubleGene, Double>> iterator = results.iterator();
+        int interation = 0;
+        while (iterator.hasNext()) {
+//            Double value = iterator.next().bestPhenotype().fitness();
+//            System.out.println("Fitness score of the best Phenotype - interaction" + (++interation));
+//            System.out.println(value);
+
+            Phenotype solution = iterator.next().bestPhenotype();
+            System.out.println("Best Phenotype - interaction" + (++interation));
+            System.out.println(solution);
+        }
     }
 }
