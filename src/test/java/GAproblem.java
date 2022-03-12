@@ -1,14 +1,22 @@
+import static io.jenetics.engine.EvolutionResult.toBestEvolutionResult;
 import static io.jenetics.engine.EvolutionResult.toBestPhenotype;
 import static io.jenetics.engine.Limits.bySteadyFitness;
 
 import io.jenetics.*;
 import io.jenetics.engine.Engine;
+import io.jenetics.engine.Evolution;
+import io.jenetics.engine.EvolutionResult;
 import io.jenetics.engine.EvolutionStatistics;
 import io.jenetics.ext.SimulatedBinaryCrossover;
+import io.jenetics.ext.moea.Vec;
+import io.jenetics.stat.MinMax;
 import io.jenetics.util.Factory;
 import io.jenetics.util.ISeq;
 import io.jenetics.util.MSeq;
 import io.jenetics.util.Seq;
+
+import java.util.Iterator;
+import java.util.stream.Collectors;
 
 
 public class GAproblem {
@@ -139,8 +147,21 @@ public class GAproblem {
         System.out.println("\n\n");
         System.out.printf(
                 "Genotype of best item: %s%n",
-                best.genotype()
-        );
+                best.genotype());
 
+        final EvolutionResult<DoubleGene, Double> results = engine
+                .stream()
+                .limit(100)
+                .flatMap(MinMax.toStrictlyIncreasing())
+                .collect(toBestEvolutionResult());
+                //collect(ISeq.toISeq(10));
+
+        Iterator<Genotype<DoubleGene>> iterator = results.genotypes().iterator();
+        int interation = 0;
+        while(iterator.hasNext()){
+            Genotype value = iterator.next();
+            System.out.println("Best genotype so far - interaction" + (++interation));
+            System.out.println(value);
+        }
     }
 }
